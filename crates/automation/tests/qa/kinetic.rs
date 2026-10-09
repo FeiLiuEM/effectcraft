@@ -75,9 +75,26 @@ fn kinetic_typography() {
     qa.exec("layer.setSwitch", json!({"layers": [pre["layer"].clone()], "switch": "motionBlur", "value": true}));
     qa.exec("layer.enableTimeRemap", json!({"layers": [pre["layer"].clone()], "value": true}));
     qa.tool("add_keyframe", json!({"layer": pre["layer"].clone(), "path": "timeRemap", "keys": [{"time": 0, "value": 1.9}, {"time": 1.9, "value": 0}]}));
-    let fwd = qa.frame(Some(pre["comp"].clone()), 1.6);
+    // The remap curve runs 1.9 -> 0 over 0..1.9 s, so the parent at 0.3 s has to show the precomp
+    // at 1.6 s. Check that against the precomp's own timeline rather than against a pixel tolerance:
+    // the expected time has to be the closest one by a clear margin, so the anti-aliasing differences
+    // between a nested and a standalone render (which vary by platform and by font stack) cannot fail
+    // this, while a remap that is off, clamped or switched off still does.
     let rev = qa.frame(Some(comp.clone()), 0.3);
-    assert!(mean_diff(&fwd, &rev) < 1.0, "time remap 0.3 s → 1.6 s of the precomp");
+    let d = mean_diff(&qa.frame(Some(pre["comp"].clone()), 1.6), &rev);
+    let mut rival = f64::MAX;
+    let mut t = 0.0f64;
+    while t <= 1.9 + 1e-9 {
+        if (t - 1.6).abs() > 0.1 {
+            rival = rival.min(mean_diff(&qa.frame(Some(pre["comp"].clone()), t), &rev));
+        }
+        t += 0.1;
+    }
+    // 8.0 is what the other cross-path comparison in this suite allows (`compositing.rs`); the
+    // margin keeps "the closest time" a real match rather than a coincidence of every frame looking
+    // alike, which is what a broken render path produces.
+    assert!(d < 8.0, "the precomp at 1.6 s is the frame the parent shows at 0.3 s: mean diff {d}");
+    assert!(d * 2.0 < rival, "0.3 s maps to 1.6 s and to no other time: {d} vs the nearest other time's {rival}");
 
     // Render: H.264 and a PNG sequence through the render queue.
     let mp4 = qa.path("kinetic.mp4");
