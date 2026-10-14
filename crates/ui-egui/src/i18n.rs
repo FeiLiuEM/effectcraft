@@ -101,7 +101,16 @@ fn supported(locale: Option<&str>) -> &'static str {
 }
 
 pub(crate) fn label<'a>(app: &EffectcraftApp, command: &str, source: &'a str) -> &'a str {
-    let language = language(app);
+    label_in(language(app), command, source)
+}
+
+/// [`label`] for the menus the panels draw themselves: a context menu has the command and the English
+/// label but no app, so the language is the one the panels already draw in ([`ui::current`]).
+pub(crate) fn current_label<'a>(command: &str, source: &'a str) -> &'a str {
+    label_in(ui::current(), command, source)
+}
+
+fn label_in<'a>(language: &str, command: &str, source: &'a str) -> &'a str {
     // The engine names the platform's file manager before the catalog sees the label. These
     // two commands keep their ids, but on Windows/Linux their source is no longer "Finder".
     if language == "uk" && matches!(command, "file.revealInFinder" | "layer.revealInFinder") {

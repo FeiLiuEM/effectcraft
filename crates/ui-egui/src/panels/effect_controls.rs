@@ -1279,6 +1279,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
             let lid = layer.id.0;
             let mut picked_label: Option<usize> = None;
             let mut item = |ui: &mut egui::Ui, label: &str, enabled: bool, cmd: &str, params: serde_json::Value| {
+                let label = crate::i18n::current_label(cmd, label);
                 if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
                     actions.push((cmd.into(), params));
                     ui.close();

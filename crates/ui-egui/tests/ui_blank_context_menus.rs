@@ -82,7 +82,8 @@ fn timeline_blank_menu_opens_solid_settings() {
     right_click(&mut h, p);
     h.get_by_label("New ⏵").click();
     h.run_steps(3);
-    h.get_by_label("Solid…").click();
+    // The rows are spelled the way the catalogue and the menubar spell them.
+    h.get_by_label("Solid...").click();
     h.run_steps(3);
     assert_eq!(h.state().dialog, Some(Dialog::SolidSettings));
 }

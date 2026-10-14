@@ -4287,6 +4287,12 @@ mod tests {
         "Button::new(\"",
         "Window::new(\"",
         "CollapsingHeader::new(\"",
+        // The free functions the context menus in the timeline and Effect Controls draw with.
+        // `ui.button(label)` / `ui.menu_button(cat)` hand a variable, so a literal is only caught
+        // here when it is written straight into the call; the helpers that translate the variable
+        // case are pinned by `context_menu_helpers_ask_the_catalog` below.
+        "ui.button(\"",
+        "ui.menu_button(\"",
     ];
 
     /// Literals that stay as they are: a unit or a separator reads the same in every language.
@@ -4520,5 +4526,54 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// The context menus draw their rows through helpers of their own - `item(ui, label, cmd, ..)`
+    /// and a `ui.button(label)` loop - so the call-shape scan above cannot see them, and three of
+    /// those menus stayed English through a whole translation (#1308). Each helper now asks the
+    /// catalog for the pair it draws; this is a smoke check on those helper bodies.
+    #[test]
+    fn context_menu_helpers_ask_the_catalog() {
+        for (path, source) in
+            [("panels/timeline.rs", include_str!("../panels/timeline.rs")), ("panels/effect_controls.rs", include_str!("../panels/effect_controls.rs"))]
+        {
+            let mut helpers = 0;
+            for (at, _) in source.match_indices("let mut item = |ui") {
+                let body = &source[at..];
+                let window = &body[..body.len().min(500)];
+                assert!(window.contains("current_label("), "{path}: the item() helper at byte {at} draws its label without asking the catalog");
+                helpers += 1;
+            }
+            assert!(helpers > 0, "{path}: no item() helper found - update this check with the code");
+        }
+    }
+
+    /// The pairs the context menus draw, which the helpers above resolve: every one has a row in
+    /// every catalogue, so a translated interface draws them translated. Nine pairs those menus also
+    /// draw have no row in any language yet (`effect.copy`/`paste`/`duplicate`/`remove`/`reset`,
+    /// `prop.set`/`prop.reset`, `app.solidSettings`, and `edit.clear`'s "Delete" against the
+    /// catalogue's "Clear") and keep falling back to English - the rest of #1308, which needs rows,
+    /// and a row costs every catalogue.
+    #[test]
+    fn context_menu_pairs_resolve_in_the_catalogue() {
+        const PAIRS: &[(&str, &str)] = &[
+            ("layer.newText", "Text"),
+            ("layer.newSolid", "Solid..."),
+            ("layer.newLight", "Light..."),
+            ("layer.newCamera", "Camera..."),
+            ("layer.settings", "Layer Settings..."),
+            ("layer.timeStretch", "Time Stretch..."),
+            ("layer.precompose", "Pre-compose..."),
+            ("layer.freezeOnLastFrame", "Freeze On Last Frame"),
+            ("layer.transform", "Fit to Comp"),
+            ("edit.duplicate", "Duplicate"),
+        ];
+        for language in ["ja", "zh-hans", "zh-hant"] {
+            set_current(language);
+            for (command, source) in PAIRS {
+                assert_ne!(crate::i18n::current_label(command, source), *source, "{language}: {command} / {source} has no row");
+            }
+        }
+        set_current("en");
     }
 }

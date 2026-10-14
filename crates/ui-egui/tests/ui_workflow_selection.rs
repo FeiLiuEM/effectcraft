@@ -553,7 +553,7 @@ fn project_context_move_to_root_acts_on_the_whole_selection() {
     }
 }
 
-/// Timeline right-click "Pre-compose…" groups every selected layer into one composition,
+/// Timeline right-click "Pre-compose..." groups every selected layer into one composition,
 /// like Layer > Pre-compose does, from both the outline row and the layer bar
 /// (#985, #1003).
 #[test]
@@ -581,7 +581,7 @@ fn timeline_context_menu_precompose_groups_the_whole_selection() {
         h.run_steps(3);
         let p = if via_bar { bar(&h, ids[1]) } else { row(&h, ids[1]) };
         right_click(&mut h, p);
-        h.get_by_label("Pre-compose…").click();
+        h.get_by_label("Pre-compose...").click();
         h.run_steps(3);
         assert_eq!(h.state().dialog, Some(Dialog::Precompose), "via_bar={via_bar}: Pre-compose opens its dialog");
         let ok = rect(&h, "dialog.precompose.ok").center();

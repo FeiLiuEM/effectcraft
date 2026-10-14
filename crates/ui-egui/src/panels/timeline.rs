@@ -2953,13 +2953,14 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
             let menu = ui.menu_button(crate::i18n::tr("New"), |ui| {
                 for (key, label, command, params) in [
                     ("text", "Text", "layer.newText", json!({})),
-                    ("solid", "Solid…", "layer.newSolid", json!({})),
-                    ("light", "Light…", "layer.newLight", json!({})),
-                    ("camera", "Camera…", "layer.newCamera", json!({})),
+                    ("solid", "Solid...", "layer.newSolid", json!({})),
+                    ("light", "Light...", "layer.newLight", json!({})),
+                    ("camera", "Camera...", "layer.newCamera", json!({})),
                     ("null", "Null Object", "layer.newNull", json!({})),
                     ("shape", "Shape Layer", "layer.newShape", json!({"kind": "none"})),
                     ("adjustment", "Adjustment Layer", "layer.newAdjustment", json!({})),
                 ] {
+                    let label = crate::i18n::current_label(command, label);
                     let response = ui.button(label);
                     app.auto.add(&format!("timeline.context.{area}.{key}"), response.rect, label);
                     if response.clicked() {
@@ -3796,6 +3797,7 @@ fn prop_menu(
 ) {
     let (l, uid) = (layer.id.0, prop.uid);
     let mut item = |ui: &mut egui::Ui, key: &str, label: &str, selected: bool, cmd: &str, params: serde_json::Value| {
+        let label = crate::i18n::current_label(cmd, label);
         let resp = ui.add(egui::Button::new(label).selected(selected));
         auto.add(&format!("timeline.prop.{uid}.menu.{key}"), resp.rect, label);
         if resp.clicked() {
@@ -3877,6 +3879,7 @@ fn layer_context_menu(
 pub(crate) fn layer_menu(ui: &mut egui::Ui, layers: &[u64], caps: LayerMenuCaps, actions: &mut Vec<(String, serde_json::Value)>) {
     let Some(&id) = layers.first() else { return };
     let mut item = |ui: &mut egui::Ui, label: &str, cmd: &str, params: serde_json::Value| {
+        let label = crate::i18n::current_label(cmd, label);
         if ui.button(label).clicked() {
             actions.push(("layer.select".into(), json!({"layers": layers})));
             actions.push((cmd.into(), params));
@@ -3886,13 +3889,13 @@ pub(crate) fn layer_menu(ui: &mut egui::Ui, layers: &[u64], caps: LayerMenuCaps,
     ui.menu_button(crate::i18n::tr("New"), |ui| {
         item(ui, "Text", "layer.newText", json!({}));
         item(ui, "Solid…", "app.solidSettings", json!({}));
-        item(ui, "Light…", "layer.newLight", json!({}));
-        item(ui, "Camera…", "layer.newCamera", json!({}));
+        item(ui, "Light...", "layer.newLight", json!({}));
+        item(ui, "Camera...", "layer.newCamera", json!({}));
         item(ui, "Null Object", "layer.newNull", json!({}));
         item(ui, "Shape Layer", "layer.newShape", json!({"kind": "none"}));
         item(ui, "Adjustment Layer", "layer.newAdjustment", json!({}));
     });
-    item(ui, "Layer Settings…", "layer.settings", json!({}));
+    item(ui, "Layer Settings...", "layer.settings", json!({}));
     if caps.vector {
         item(ui, "Create Shapes from Vector Layer", "layer.create", json!({"op": "shapesFromVector", "layers": layers}));
     }
@@ -3914,9 +3917,9 @@ pub(crate) fn layer_menu(ui: &mut egui::Ui, layers: &[u64], caps: LayerMenuCaps,
     ui.menu_button(crate::i18n::tr("Time"), |ui| {
         item(ui, "Enable Time Remapping", "layer.enableTimeRemap", json!({"layers": layers}));
         item(ui, "Time-Reverse Layer", "layer.timeReverse", json!({"layers": layers}));
-        item(ui, "Time Stretch…", "layer.timeStretch", json!({}));
+        item(ui, "Time Stretch...", "layer.timeStretch", json!({}));
         item(ui, "Freeze Frame", "layer.freezeFrame", json!({"layers": layers}));
-        item(ui, "Freeze on Last Frame", "layer.freezeOnLastFrame", json!({"layers": layers}));
+        item(ui, "Freeze On Last Frame", "layer.freezeOnLastFrame", json!({"layers": layers}));
     });
     ui.menu_button(crate::i18n::tr("Markers"), |ui| {
         item(ui, "Add Marker", "layer.addMarker", json!({"layers": layers}));
@@ -3939,7 +3942,7 @@ pub(crate) fn layer_menu(ui: &mut egui::Ui, layers: &[u64], caps: LayerMenuCaps,
         item(ui, "Send Layer to Back", "layer.arrange", json!({"layers": layers, "to": "back"}));
     });
     ui.separator();
-    item(ui, "Pre-compose…", "layer.precompose", json!({"layers": layers}));
+    item(ui, "Pre-compose...", "layer.precompose", json!({"layers": layers}));
     item(ui, "Duplicate", "edit.duplicate", json!({"layers": layers}));
     item(ui, "Split Layer", "edit.splitLayer", json!({"layers": layers}));
     item(ui, "Delete", "edit.clear", json!({"layers": layers}));
@@ -3959,10 +3962,10 @@ fn effects_submenu(ui: &mut egui::Ui, layers: &[u64], item: &mut dyn FnMut(&mut 
     widgets::menu_scroll(ui, |ui| {
         for (cat, mut fx) in cats {
             fx.sort_by_key(|e| e.name.to_ascii_lowercase());
-            ui.menu_button(cat, |ui| {
+            ui.menu_button(crate::i18n::effects::category(cat), |ui| {
                 widgets::menu_scroll(ui, |ui| {
                     for e in fx {
-                        item(ui, e.name, "effect.apply", json!({"effect": e.id, "layers": layers}));
+                        item(ui, &crate::i18n::effects::name(e.id, e.name), "effect.apply", json!({"effect": e.id, "layers": layers}));
                     }
                 });
             });
