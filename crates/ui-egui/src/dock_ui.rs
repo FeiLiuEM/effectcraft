@@ -39,10 +39,23 @@ impl EffectcraftApp {
                 out.push((panels::viewers::panel(id), t));
             }
         }
-        let Some(comp) = self.session.active_comp() else { return out };
-        if let Some(l) = self.session.state.selected_layers.first().and_then(|id| comp.layer(*id)) {
+        if let Some(comp) = self.session.active_comp()
+            && let Some(l) = self.session.state.selected_layers.first().and_then(|id| comp.layer(*id))
+        {
             out.push((PanelKind::EffectControls, format!("Effect Controls {}", l.name)));
             out.push((PanelKind::Properties, format!("Properties: {}", l.name)));
+        }
+        // The panels named for themselves, in the interface language. The Window menu has carried a
+        // (`window.panel`, title) row for these in every catalog that exists, so the dock reads the
+        // same pair instead of drawing `title()`'s English; a panel the menu does not list (`History`,
+        // `ScriptUI Panel`) keeps its English name, and a tab that names a comp or a layer is listed
+        // above and wins, being found first.
+        for p in PanelKind::ALL {
+            // The Window menu lists most of these; `Markers` is only in the panel catalog, and the
+            // two panels in neither (`History`, `ScriptUI Panel`) keep their English names.
+            let listed = crate::i18n::label(self, "window.panel", p.title());
+            let label = if listed == p.title() { crate::i18n::tr(p.title()) } else { listed };
+            out.push((p, label.to_string()));
         }
         out
     }
@@ -570,7 +583,7 @@ impl EffectcraftApp {
             }
         }
         // Ghost of the dragged tab.
-        let g = painter.layout_no_wrap(p.title().to_string(), crate::theme::Tokens::ui(12.0), Color32::WHITE);
+        let g = painter.layout_no_wrap(crate::i18n::label(self, "window.panel", p.title()).to_string(), crate::theme::Tokens::ui(12.0), Color32::WHITE);
         let gr = Rect::from_min_size(pos + vec2(12.0, 10.0), g.size() + vec2(16.0, 8.0));
         painter.rect_filled(gr, 4.0, t.focus.gamma_multiply(0.85));
         painter.galley(gr.min + vec2(8.0, 4.0), g, Color32::WHITE);
@@ -643,4 +656,42 @@ fn floating_resize_delta(ui: &mut egui::Ui, response: &egui::Response) -> egui::
         });
     }
     if response.enabled() { delta } else { egui::Vec2::ZERO }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn the_panel_tabs_are_drawn_in_the_interface_language() {
+        // `the_dock_draws_every_panel_it_can_in_the_interface_language` checks the catalogs; this
+        // calls the method that builds the tab labels, so a dock that went back to
+        // `PanelKind::title()` fails here even while every row is still present.
+        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        app.session.execute("prefs.set", json!({"key": "general.language", "value": "zh-hans"})).unwrap();
+        let tabs = app.tab_titles();
+        let title = |p: PanelKind| tabs.iter().find(|(k, _)| *k == p).map(|(_, t)| t.clone()).unwrap_or_default();
+        for (panel, chinese) in [
+            (PanelKind::Timeline, "时间轴"),
+            (PanelKind::Project, "项目"),
+            (PanelKind::Align, "对齐"),
+            (PanelKind::Audio, "音频"),
+            (PanelKind::EffectsPresets, "效果和预设"),
+        ] {
+            assert_eq!(title(panel), chinese, "{panel:?} is not drawn in Chinese");
+        }
+        // The two panels no catalog names keep their English tabs.
+        assert_eq!(title(PanelKind::History), "History");
+    }
+
+    #[test]
+    fn the_english_interface_keeps_the_english_tabs() {
+        let app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let tabs = app.tab_titles();
+        let title = |p: PanelKind| tabs.iter().find(|(k, _)| *k == p).map(|(_, t)| t.clone()).unwrap_or_default();
+        for p in [PanelKind::Timeline, PanelKind::Project, PanelKind::Align] {
+            assert_eq!(title(p), p.title(), "an English interface must not translate its tabs");
+        }
+    }
 }
